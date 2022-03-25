@@ -23,10 +23,13 @@ seed_code = list(
     )
 )
 
-
-def create_execute_request(code):
+# username is used to differentiate between the seed, solution and setup code
+def create_execute_request(code, username):
     return create_message(
-        "execute_request", {"code": code, "silent": False, "allow_stdin": True}
+        "execute_request",
+        {"code": code, "silent": False, "allow_stdin": True},
+        "shell",
+        username,
     )
 
 
@@ -34,9 +37,9 @@ def create_input_reply(value):
     return create_message("input_reply", {"value": value}, "stdin")
 
 
-def create_message(msg_type, content, channel="shell"):
+def create_message(msg_type, content, channel, username="seed"):
     return {
-        "header": create_header(msg_type),
+        "header": create_header(msg_type, username),
         "parent_header": {},
         "metadata": {},
         "content": content,
@@ -44,11 +47,10 @@ def create_message(msg_type, content, channel="shell"):
     }
 
 
-def create_header(msg_type):
+def create_header(msg_type, username):
     return {
         "msg_id": str(uuid.uuid4()),
-        "username": "test",
-        "session": session,
+        "username": username,
         "date": datetime.now().isoformat(),
         "msg_type": msg_type,
         "version": "5.0",
@@ -61,24 +63,21 @@ ws.connect("ws://" + jupyter_host + "/api/kernels/" + kernel_info["id"] + "/chan
 
 def wait_for_execution(seed):
     processing = True
-    # TODO: this is ugly, is there a way to know that the "execute_reply" came
-    # from a seed or a solution? metadata?
-    testing_seed = True
     while processing:
         res = json.loads(ws.recv())
         if res["msg_type"] == "execute_reply":
             # TODO: refactor this ugly code
             has_error = res["content"]["status"] == "error"
-            if testing_seed and has_error:
-                req = create_execute_request(soln)
+            username = res["parent_header"].get("username")
+            if username == "seed" and has_error:
+                req = create_execute_request(soln, "solution")
                 print("seed failed")
-                testing_seed = False
                 ws.send(json.dumps(req))
-            elif testing_seed and not has_error:
+            elif username == "seed" and not has_error:
                 print("seed passed", seed)
                 raise Exception("tests should fail on seeds")
             elif has_error:
-                print("solution failed", soln)
+                print(username, "failed", soln)
                 print(res)
                 raise Exception("tests should not fail on solutions")
             else:
@@ -93,15 +92,13 @@ def wait_for_execution(seed):
 
 # TODO: find a better way to differentiate between setup and test cells.
 # Assuming that the first cell is the only setup cell is brittle.
-req = create_execute_request(seed_code[0])
-try:
-    ws.send(json.dumps(req))
-    wait_for_execution(seed_code[0])
-except Exception as e:
-    print("Error on seed is expected, currently:", e.args[0])
+req = create_execute_request(seed_code[0], "setup")
+ws.send(json.dumps(req))
+wait_for_execution(seed_code[0])
+
 
 for (seed, soln) in zip(seed_code[1:], solutions):
-    req = create_execute_request(seed)
+    req = create_execute_request(seed, "seed")
     print("Sending:", req)
     ws.send(json.dumps(req))
     wait_for_execution(seed)

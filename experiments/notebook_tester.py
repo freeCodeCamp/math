@@ -3,6 +3,7 @@ import requests
 import json
 import uuid
 from datetime import datetime
+from solutions import solutions
 
 notebook_filename = "notebook.ipynb"
 jupyter_host = "localhost:8888"
@@ -57,28 +58,53 @@ def create_header(msg_type):
 ws = websocket.WebSocket()
 ws.connect("ws://" + jupyter_host + "/api/kernels/" + kernel_info["id"] + "/channels")
 
-# TODO: each entry in 'code' should either be a test or not. If it is a test it
-# needs a solution and a seed.  The seed should generate errors then the
-# solution should not. If it's not a test, it does not need a solution and
-# should execute without errors.
-for seed in seed_code:
-    req = create_execute_request(seed)
-    print("Sending:", req)
-    ws.send(json.dumps(req))
+
+def wait_for_execution(seed):
     processing = True
+    # TODO: this is ugly, is there a way to know that the "execute_reply" came
+    # from a seed or a solution? metadata?
+    testing_seed = True
     while processing:
         res = json.loads(ws.recv())
         if res["msg_type"] == "execute_reply":
-            # TODO: check that the seed fails
-            if res["content"]["status"] == "error":
-                print("Error:", res)
+            # TODO: refactor this ugly code
+            has_error = res["content"]["status"] == "error"
+            if testing_seed and has_error:
+                req = create_execute_request(soln)
+                print("seed failed")
+                testing_seed = False
+                ws.send(json.dumps(req))
+            elif testing_seed and not has_error:
+                print("seed passed", seed)
+                raise Exception("tests should fail on seeds")
+            elif has_error:
+                print("solution failed", soln)
+                print(res)
+                raise Exception("tests should not fail on solutions")
             else:
-                print("Success:", res)
-            processing = False
+                processing = False
+
         if res["msg_type"] == "input_request":
             # TODO: use the right input for this request
             req = create_input_reply("dummy data")
             print("Sending reply:", req)
             ws.send(json.dumps(req))
+
+
+# TODO: find a better way to differentiate between setup and test cells.
+# Assuming that the first cell is the only setup cell is brittle.
+req = create_execute_request(seed_code[0])
+try:
+    ws.send(json.dumps(req))
+    wait_for_execution(seed_code[0])
+except Exception as e:
+    print("Error on seed is expected, currently:", e.args[0])
+
+for (seed, soln) in zip(seed_code[1:], solutions):
+    req = create_execute_request(seed)
+    print("Sending:", req)
+    ws.send(json.dumps(req))
+    wait_for_execution(seed)
+
 
 ws.close()

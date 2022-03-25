@@ -1,6 +1,11 @@
+import os
+
+
 class TestRunner:
-    def __init__(self, options):
-        self.catch_exceptions = options["catch_exceptions"]
+    def __init__(self):
+        self.catch_exceptions = (
+            False if os.environ.get("FCC_ENVIRONMENT") == "TESTING" else True
+        )
 
     def run(self, fn):
         if self.catch_exceptions:

@@ -5,7 +5,7 @@ All commands should be run from the directory containing this README.
 First, start the server
 
 ```bash
-jupyter notebook --config=jupyter_notebook_config.py
+FCC_ENVIRONMENT=TESTING jupyter notebook --config=jupyter_notebook_config.py
 ```
 
 Then, in a separate terminal

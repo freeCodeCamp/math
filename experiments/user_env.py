@@ -1,14 +1,14 @@
 class UserEnv:
-    def setGlobals(self, user_globals):
+    def set_globals(self, user_globals):
         self.globals = user_globals
 
-    def setInput(self, input):
+    def set_input(self, input):
         self.input = input
 
-    def getVariable(self, key):
+    def var(self, key):
         return self.globals[key]
 
-    def getCode(self):
+    def code(self):
         return self.input[-1]
 
 

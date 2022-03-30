@@ -61,7 +61,7 @@ ws = websocket.WebSocket()
 ws.connect("ws://" + jupyter_host + "/api/kernels/" + kernel_info["id"] + "/channels")
 
 
-def wait_for_execution(seed):
+def wait_for_execution(seed, soln=None):
     processing = True
     while processing:
         res = json.loads(ws.recv())
@@ -101,7 +101,7 @@ for (seed, soln) in zip(seed_code[1:], solutions):
     req = create_execute_request(seed, "seed")
     print("Sending:", req)
     ws.send(json.dumps(req))
-    wait_for_execution(seed)
+    wait_for_execution(seed, soln)
 
 
 ws.close()

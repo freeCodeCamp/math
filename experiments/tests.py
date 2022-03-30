@@ -3,20 +3,17 @@ import re
 
 
 def step01():
-    assert (
-        user_env.var("var") == "demo"
-    ), "var should contain the 'demo' string!"
-    assert re.search("'\w*'", user_env.code()), "single quotes please!"
+    assert re.search(
+        "def sqrt", user_env.code()
+    ), "Please define a function named 'sqrt'."
+    actual = user_env.var("sqrt")(25)
+    assert actual == 5, "sqrt(25) should return 5, but got " + str(actual)
     print("Step 01: Success!")
 
 
 def step02():
-    assert (
-        user_env.var("a") == "ay"
-    ), "variable a should contain the 'ay' string!"
-    assert (
-        user_env.var("b") == "bee"
-    ), "variable b should contain the 'bee' string!"
+    assert user_env.var("a") == "ay", "variable a should contain the 'ay' string!"
+    assert user_env.var("b") == "bee", "variable b should contain the 'bee' string!"
     print("Step 02: Success!")
 
 
